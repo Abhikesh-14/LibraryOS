@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Borrow Requests — LibraryOS{% endblock %}
+{% block page_title %}Borrow Requests{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+  <h1 class="section-title"><i class="fas fa-hand-holding-heart"></i> Borrow Requests Management</h1>
+  <a href="{% url 'library:admin_dashboard' %}" class="btn-lms btn-outline-lms btn-sm-lms" id="back-to-dashboard-btn">
+    <i class="fas fa-arrow-left"></i> Dashboard
+  </a>
+</div>
+
+<!-- Filter Tabs -->
+<div style="margin-bottom:20px;">
+  <div class="filter-tabs">
+    <a class="filter-tab {% if not status_filter %}active{% endif %}" href="{% url 'library:borrow_requests_list' %}" id="filter-all">All</a>
+    <a class="filter-tab {% if status_filter == 'Pending' %}active{% endif %}" href="?status=Pending" id="filter-pending">
+      <i class="fas fa-hourglass-half" style="font-size:11px;"></i> Pending
+    </a>
+    <a class="filter-tab {% if status_filter == 'Approved' %}active{% endif %}" href="?status=Approved" id="filter-approved">
+      <i class="fas fa-check-circle" style="font-size:11px;"></i> Approved
+    </a>
+    <a class="filter-tab {% if status_filter == 'Returned' %}active{% endif %}" href="?status=Returned" id="filter-returned">
+      <i class="fas fa-undo" style="font-size:11px;"></i> Returned
+    </a>
+    <a class="filter-tab {% if status_filter == 'Rejected' %}active{% endif %}" href="?status=Rejected" id="filter-rejected">
+      <i class="fas fa-xmark-circle" style="font-size:11px;"></i> Rejected
+    </a>
+  </div>
+</div>
+
+<!-- Requests Table -->
+<div class="lms-card">
+  <div class="lms-card-body" style="padding:0;">
+    {% if page_obj %}
+    <div class="lms-table-wrap">
+      <table class="lms-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Member</th>
+            <th>Book</th>
+            <th>Requested</th>
+            <th>Due Date</th>
+            <th>Returned</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for borrow in page_obj %}
+          <tr>
+            <td style="font-size:12px; color:var(--text-muted); font-weight:600;">#{{ borrow.id }}</td>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm">{{ borrow.user.username|slice:":2"|upper }}</div>
+                <div class="user-info">
+                  <div class="user-name">{{ borrow.user.username }}</div>
+                </div>
+              </div>
+            </td>
+            <td style="font-weight:600; max-width:180px;">
+              <span style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                {{ borrow.book.title }}
+              </span>
+            </td>
+            <td style="font-size:12.5px; color:var(--text-secondary); white-space:nowrap;">{{ borrow.borrow_date|date:"M d, Y" }}</td>
+            <td style="font-size:12.5px; color:var(--text-secondary); white-space:nowrap;">{{ borrow.due_date }}</td>
+            <td style="font-size:12.5px; color:var(--text-secondary);">{{ borrow.return_date|default:"—" }}</td>
+            <td>
+              {% if borrow.status == 'Pending' %}
+                <span class="status-badge badge-pending">Pending</span>
+              {% elif borrow.status == 'Approved' %}
+                <span class="status-badge badge-approved">Approved</span>
+              {% elif borrow.status == 'Returned' %}
+                <span class="status-badge badge-returned">Returned</span>
+              {% elif borrow.status == 'Rejected' %}
+                <span class="status-badge badge-rejected">Rejected</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if borrow.status == 'Pending' %}
+              <div style="display:flex; gap:5px; flex-wrap:nowrap;">
+                <a href="{% url 'library:approve_borrow' borrow.pk %}"
+                   class="btn-lms btn-success-lms btn-sm-lms"
+                   id="approve-req-{{ borrow.pk }}"
+                   data-confirm="Approve borrow for '{{ borrow.book.title }}'?"
+                   data-confirm-title="Approve Request"
+                   data-confirm-ok="Approve"
+                   data-confirm-type="success">
+                  <i class="fas fa-check"></i>
+                </a>
+                <a href="{% url 'library:reject_borrow' borrow.pk %}"
+                   class="btn-lms btn-danger-lms btn-sm-lms"
+                   id="reject-req-{{ borrow.pk }}"
+                   data-confirm="Reject borrow for '{{ borrow.book.title }}'?"
+                   data-confirm-title="Reject Request"
+                   data-confirm-ok="Reject">
+                  <i class="fas fa-xmark"></i>
+                </a>
+              </div>
+              {% else %}
+                <span style="font-size:12px; color:var(--text-muted);">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="lms-pagination" style="padding:18px;">
+      {% if page_obj.has_previous %}
+        <a class="pg-btn" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+          <i class="fas fa-chevron-left"></i>
+        </a>
+      {% else %}
+        <span class="pg-btn disabled"><i class="fas fa-chevron-left"></i></span>
+      {% endif %}
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <span class="pg-btn active">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+          <a class="pg-btn" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <a class="pg-btn" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+          <i class="fas fa-chevron-right"></i>
+        </a>
+      {% else %}
+        <span class="pg-btn disabled"><i class="fas fa-chevron-right"></i></span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-inbox"></i></div>
+      <h4>No borrow requests found</h4>
+      <p>No requests match the selected filter.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
